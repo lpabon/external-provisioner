@@ -79,6 +79,10 @@ const (
 
 	snapshotKind     = "VolumeSnapshot"
 	snapshotAPIGroup = snapapi.GroupName // "snapshot.storage.k8s.io"
+
+	pvcInfoName      = "csi.storage.k8s.io/pvc.name"
+	pvcInfoNamespace = "csi.storage.k8s.io/pvc.namespace"
+	pvcInfoUid       = "csi.storage.k8s.io/pvc.uid"
 )
 
 // CSIProvisioner struct
@@ -409,6 +413,14 @@ func (p *csiProvisioner) Provision(options controller.VolumeOptions) (*v1.Persis
 			})
 		}
 	}
+
+	// Set PVC information
+	if options.Parameters == nil {
+		options.Parameters = make(map[string]string)
+	}
+	options.Parameters[pvcInfoName] = options.PVC.GetName()
+	options.Parameters[pvcInfoNamespace] = options.PVC.GetNamespace()
+	options.Parameters[pvcInfoUid] = string(options.PVC.GetUID())
 
 	// Create a CSI CreateVolumeRequest and Response
 	req := csi.CreateVolumeRequest{
