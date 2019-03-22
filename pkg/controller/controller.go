@@ -777,13 +777,11 @@ func (p *csiProvisioner) Delete(volume *v1.PersistentVolume) error {
 	storageClassName := volume.Spec.StorageClassName
 	if len(storageClassName) != 0 {
 		if storageClass, err := p.client.StorageV1().StorageClasses().Get(storageClassName, metav1.GetOptions{}); err == nil {
-			// Resolve provision secret credentials.
-			// No PVC is provided when resolving provision/delete secret names, since the PVC may or may not exist at delete time.
-			provisionerSecretRef, err := getSecretReference(provisionerSecretParams, storageClass.Parameters, volume.Name, nil)
-			if err != nil {
-				return err
-			}
-			if provisionerSecretRef == nil && len(volume.Annotations) > 0 {
+			var (
+				provisionerSecretRef *v1.SecretReference
+				err                  error
+			)
+			if len(volume.Annotations) > 0 {
 				name, nameOk := volume.Annotations[prefixedProvisionerSecretNameKey]
 				namespace, namespaceOk := volume.Annotations[prefixedProvisionerSecretNamespaceKey]
 				if nameOk && namespaceOk {
@@ -791,6 +789,14 @@ func (p *csiProvisioner) Delete(volume *v1.PersistentVolume) error {
 						Name:      name,
 						Namespace: namespace,
 					}
+				}
+			}
+			if provisionerSecretRef == nil {
+				// Resolve provision secret credentials.
+				// No PVC is provided when resolving provision/delete secret names, since the PVC may or may not exist at delete time.
+				provisionerSecretRef, err = getSecretReference(provisionerSecretParams, storageClass.Parameters, volume.Name, nil)
+				if err != nil {
+					return err
 				}
 			}
 			credentials, err := getCredentials(p.client, provisionerSecretRef)
